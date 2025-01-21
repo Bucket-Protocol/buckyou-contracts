@@ -1,2 +1,2 @@
-# buckyou-contracts
+# BuckYou Contracts
 Contracts for BuckYou campaign
