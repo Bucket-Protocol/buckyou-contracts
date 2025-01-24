@@ -97,7 +97,7 @@ fun buy_internal<P, T>(
     account: address,
     ticket_count: u64,
     mut payment: Balance<T>,
-    referrer: Option<address>,
+    mut referrer: Option<address>,
     is_rebuy: bool,
 ) {
     // check version
@@ -111,6 +111,9 @@ fun buy_internal<P, T>(
     status.handle_final(config, clock, account, ticket_count);
 
     // handle referrer and holders
+    if (status.user_profiles().contains(account)) {
+        referrer = status.user_profiles().borrow(account).referrer();
+    };
     let payment_amount = payment.value();
     let referrer = if (referrer.is_some()) {
         let amount_for_final = config.final_ratio().mul_u64(payment_amount).floor();

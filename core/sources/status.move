@@ -376,10 +376,17 @@ public(package) fun update_user_state<P>(
 ) {
     if (!status.user_profiles().contains(account)) {
         let mut profile = profile::new(referrer);
+        if (referrer.is_some()) {
+            let referrer = referrer.destroy_some();
+            profile.set_referrer(referrer);
+            status.user_profiles.borrow_mut(referrer).add_score();
+            emit(Refer<P> { referrer, refered: account});
+        };
         status.pool_states().keys().do!(|coin_type| {
             let pool_unit = status.pool_states().get(&coin_type).unit();
             profile.states_mut().insert(coin_type, user_state::new(pool_unit));
         });
+        status.user_profiles.add(account, profile);
     } else {
         let all_coin_types = status.pool_states().keys();
         all_coin_types.do!(|coin_type| {
@@ -413,7 +420,7 @@ public(package) fun update_user_state<P>(
                 } else {
                     user_state::new(pool_unit)
                 };
-                profile.states_mut().insert(coin_type, user_state);            
+                profile.states_mut().insert(coin_type, user_state);
             };
         });
         let profile = status.user_profiles.borrow_mut(account);
@@ -435,6 +442,8 @@ public struct AccountInfo has copy, drop {
     holders_rewards: vector<u64>,
     referral_rewards: vector<u64>,
     shares: u64,
+    referrer: Option<address>,
+    referral_score: u64,
 }
 
 public fun get_account_info<P>(
@@ -449,10 +458,13 @@ public fun get_account_info<P>(
         let referral_rewards = coin_types.map_ref!(|coin_type| {
             status.realtime_referral_reward(account, coin_type)            
         });
-        let shares = status.user_profiles().borrow(account).shares();
         let coin_types = coin_types.map!(|coin_type| coin_type.into_string());
+        let profile = status.user_profiles().borrow(account); 
+        let shares = profile.shares();
+        let referrer = profile.referrer();
+        let referral_score = profile.referral_score();
         option::some(AccountInfo {
-            coin_types, holders_rewards, referral_rewards, shares,
+            coin_types, holders_rewards, referral_rewards, shares, referrer, referral_score,
         })
     } else {
         option::none()

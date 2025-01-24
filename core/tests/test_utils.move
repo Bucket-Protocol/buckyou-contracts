@@ -147,6 +147,7 @@ public fun rebuy<P, T>(
     s: &mut Scenario,
     account: address,
     ticket_count: u64,
+    referrer: Option<address>,
 ) {
     s.next_tx(account);
     let config = s.take_shared<Config<P>>();
@@ -157,7 +158,7 @@ public fun rebuy<P, T>(
 
     rule.update_price(&status, &mut pool, &clock);
     let req = account::request(s.ctx());
-    entry::rebuy(&config, &mut status, &mut pool, &clock, req, ticket_count);
+    entry::rebuy(&config, &mut status, &mut pool, &clock, req, ticket_count, referrer);
 
     ts::return_shared(config);
     ts::return_shared(status);
