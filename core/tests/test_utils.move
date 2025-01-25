@@ -33,6 +33,7 @@ public fun current_time(): u64 { start_time() - days(1) }
 public fun initial_price(): u64 { 1_000_000_000 }
 public fun price_period(): u64 { 86400_000 }
 public fun price_increment(): u64 { 1_000_000_000 }
+public fun referral_factor(): Float { float::from_percent(90) }
 public fun price_factor(): Float { float::from(1) }
 
 //***********************
@@ -66,7 +67,9 @@ public fun setup<P: drop>(): Scenario {
     assert!(status.end_time() == start_time() + config.initial_countdown());
 
     let mut pool = pool::new<P, SUI>(&cap, &mut status, s.ctx());
-    let sui_price_rule = step_price::new<P, SUI>(&cap, initial_price(), price_period(), price_increment(), price_factor(), s.ctx());
+    let sui_price_rule = step_price::new<P, SUI>(
+        &cap, initial_price(), price_period(), price_increment(), referral_factor(), price_factor(), s.ctx()
+    );
     pool.add_rule<P, SUI, STEP_PRICE_RULE>(&cap);
 
     transfer::public_share_object(sui_price_rule);
@@ -88,6 +91,7 @@ public fun add_pool<P, T>(
     initial_price: u64,
     price_period: u64,
     price_increment: u64,
+    referral_factor: Float,
     price_factor: Float,
 ) {
     s.next_tx(admin());
@@ -96,7 +100,9 @@ public fun add_pool<P, T>(
     let mut status = s.take_shared<Status<P>>();
 
     let mut pool = pool::new<P, T>(&cap, &mut status, s.ctx());
-    let price_rule = step_price::new<P, T>(&cap, initial_price, price_period, price_increment, price_factor, s.ctx());
+    let price_rule = step_price::new<P, T>(
+        &cap, initial_price, price_period, price_increment, referral_factor, price_factor, s.ctx()
+    );
     transfer::public_share_object(price_rule);
     pool.add_rule<P, T, STEP_PRICE_RULE>(&cap);
     transfer::public_share_object(pool);
@@ -129,7 +135,8 @@ public fun buy<P, T>(
     let rule = s.take_shared<Rule<P, T>>();
     let clock = s.take_shared<Clock>();
 
-    rule.update_price(&status, &mut pool, &clock);
+    let req = account::request(s.ctx());
+    rule.update_price_with_referrer(&status, &mut pool, &clock, req, referrer);
     let req = account::request(s.ctx());
     let payment_amount = payment_amount.destroy_or!(ticket_count * pool.price(&clock));
     let mut coin = coin::mint_for_testing<T>(payment_amount, s.ctx());
@@ -156,7 +163,8 @@ public fun rebuy<P, T>(
     let rule = s.take_shared<Rule<P, T>>();
     let clock = s.take_shared<Clock>();
 
-    rule.update_price(&status, &mut pool, &clock);
+    let req = account::request(s.ctx());
+    rule.update_price_with_referrer(&status, &mut pool, &clock, req, referrer);
     let req = account::request(s.ctx());
     entry::rebuy(&config, &mut status, &mut pool, &clock, req, ticket_count, referrer);
 
@@ -165,4 +173,51 @@ public fun rebuy<P, T>(
     ts::return_shared(pool);
     ts::return_shared(rule);
     ts::return_shared(clock);
+}
+
+public fun redeem<P, V: key + store>(
+    s: &mut Scenario,
+    account: address,
+    count: u64,
+) {
+    s.next_tx(account);
+
+    let config = s.take_shared<Config<P>>();
+    let mut status = s.take_shared<Status<P>>();
+    let clock = s.take_shared<Clock>();
+
+    count.do!(|_| {
+        let req = account::request(s.ctx());
+        let voucher = s.take_from_sender<V>();
+        entry::redeem(&config, &mut status, &clock, req, voucher);
+    });
+
+    ts::return_shared(config);
+    ts::return_shared(status);
+    ts::return_shared(clock);
+}
+
+public fun add_referrer<P>(
+    s: &mut Scenario,
+    referrer: address,
+) {
+    s.next_tx(admin());
+    let mut status = s.take_shared<Status<P>>();
+    let cap = s.take_from_sender<AdminCap<P>>();
+
+    status.add_referrer(&cap, referrer);
+
+    ts::return_shared(status);
+    s.return_to_sender(cap);
+}
+
+public fun add_voucher_type<P, V>(s: &mut Scenario) {
+    s.next_tx(admin());
+    let mut status = s.take_shared<Status<P>>();
+    let cap = s.take_from_sender<AdminCap<P>>();
+
+    status.add_voucher_type<P, V>(&cap);
+
+    ts::return_shared(status);
+    s.return_to_sender(cap);
 }

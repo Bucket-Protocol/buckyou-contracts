@@ -195,8 +195,10 @@ public fun claim_all<P, T>(
 
     let account = req.destroy();
     let coin_type = get<T>();
-    let total_reward = status.user_profiles().borrow(account).states().get(&coin_type).total_reward();
-    pool.claim(config, status, account, total_reward).into_coin(ctx)
+    let realtime_total_reward =
+        status.realtime_holders_reward(account, &coin_type) +
+        status.realtime_referral_reward(account, &coin_type);
+    pool.claim(config, status, account, realtime_total_reward).into_coin(ctx)
 }
 
 //***********************

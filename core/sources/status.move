@@ -234,11 +234,17 @@ public(package) fun handle_referrer<P, T>(
     status: &mut Status<P>,
     config: &Config<P>,
     account: address,
-    referrer: Option<address>,
+    mut referrer: Option<address>,
     amount_for_referrer: u64,
 ): Option<address> {
+    let current_referrer = status.try_get_referrer(account);
+    if (current_referrer.is_some()) {
+        referrer = current_referrer;
+    };
+    if (referrer.is_some()) {
+        status.update_user_state(*referrer.borrow(), option::none());
+    };
     status.update_user_state(account, referrer);
-    let referrer = status.user_profiles().borrow(account).referrer();
     if (referrer.is_some()) {
         let referrer = referrer.destroy_some();
         if (!status.is_valid_referrer(config, referrer)) {
@@ -247,7 +253,6 @@ public(package) fun handle_referrer<P, T>(
         if (referrer == account) {
             err_self_refer();
         };
-        status.update_user_state(referrer, option::none());
         if (amount_for_referrer > 0) {
             let coin_type = get<T>();
             status
@@ -439,6 +444,17 @@ public fun referral_whitelist<P>(status: &Status<P>): &VecSet<address> {
 
 public fun voucher_whitelist<P>(status: &Status<P>): &VecSet<TypeName> {
     &status.voucher_whitelist
+}
+
+public fun try_get_referrer<P>(
+    status: &Status<P>,
+    account: address,
+): Option<address> {
+    if (status.user_profiles().contains(account)) {
+        status.user_profiles().borrow(account).referrer()
+    } else {
+        option::none()
+    }
 }
 
 public fun is_valid_referrer<P>(

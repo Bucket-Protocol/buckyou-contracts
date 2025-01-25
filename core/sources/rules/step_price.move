@@ -6,6 +6,7 @@ module buckyou_core::step_price;
 
 use sui::clock::{Clock};
 use liquidlogic_framework::float::{Self, Float};
+use liquidlogic_framework::account::{AccountRequest};
 use buckyou_core::admin::{AdminCap};
 use buckyou_core::pool::{Pool};
 use buckyou_core::status::{Status};
@@ -25,6 +26,7 @@ public struct Rule<phantom P, phantom T> has key, store {
     initial_price: u64,
     period: u64,
     price_increment: u64,
+    referral_factor: Float,
     factor: Float,
 }
 
@@ -37,10 +39,18 @@ public fun new<P, T>(
     initial_price: u64,
     period: u64,
     price_increment: u64,
+    referral_factor: Float,
     factor: Float,
     ctx: &mut TxContext,
 ): Rule<P, T> {
-    Rule<P, T> { id: object::new(ctx), initial_price, period, price_increment, factor }
+    Rule<P, T> {
+        id: object::new(ctx),
+        initial_price,
+        period,
+        price_increment,
+        referral_factor,
+        factor
+    }
 }
 
 public fun set_factor<P, T>(
@@ -51,17 +61,24 @@ public fun set_factor<P, T>(
     rule.factor = float::from_percent_u64(percent);
 }
 
-//***********************
-//  Public Funs
-//***********************
-
 public fun destroy<P, T>(
     rule: Rule<P, T>,
     _cap: &AdminCap<P>,
 ) {
-    let Rule { id, initial_price: _, period: _, price_increment: _, factor: _ } = rule;
+    let Rule {
+        id,
+        initial_price: _,
+        period: _,
+        price_increment: _,
+        referral_factor: _,
+        factor: _,
+    } = rule;
     id.delete();
 }
+
+//***********************
+//  Public Funs
+//***********************
 
 public fun update_price<P, T>(
     rule: &Rule<P, T>,
@@ -70,6 +87,23 @@ public fun update_price<P, T>(
     clock: &Clock,
 ) {
     let price = rule.price(status, clock);
+    pool.update_price(clock, STEP_PRICE_RULE {}, price);
+}
+
+public fun update_price_with_referrer<P, T>(
+    rule: &Rule<P, T>,
+    status: &Status<P>,
+    pool: &mut Pool<P, T>,
+    clock: &Clock,
+    req: AccountRequest,
+    referrer: Option<address>,
+) {
+    let mut price = rule.price(status, clock);
+    let account = req.destroy();
+    let curr_referrer = status.try_get_referrer(account);
+    if (curr_referrer.is_some() || referrer.is_some()) {
+        price = rule.referral_factor.mul_u64(price).ceil();
+    };
     pool.update_price(clock, STEP_PRICE_RULE {}, price);
 }
 

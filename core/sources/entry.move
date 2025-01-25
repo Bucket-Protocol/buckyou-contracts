@@ -146,8 +146,9 @@ fun buy_internal<P, T>(
     status.handle_final(config, clock, account, ticket_count);
 
     // handle referrer and holders
-    if (status.user_profiles().contains(account)) {
-        referrer = status.user_profiles().borrow(account).referrer();
+    let curr_referrer = status.try_get_referrer(account);
+    if (curr_referrer.is_some()) {
+        referrer = curr_referrer;
     };
     let payment_amount = payment.value();
     let referrer = if (referrer.is_some()) {
