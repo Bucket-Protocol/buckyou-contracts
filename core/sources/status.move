@@ -135,11 +135,52 @@ public fun start<P>(
 
 public fun receive<P, V: key + store>(
     status: &mut Status<P>,
+    _cap: &mut AdminCap<P>,
     clock: &Clock,
     receiving: Receiving<V>,
 ): V {
     status.assert_game_is_ended(clock);
     transfer::public_receive(&mut status.id, receiving)
+}
+
+public fun add_referrer<P>(
+    status: &mut Status<P>,
+    _cap: &AdminCap<P>,
+    referrer: address,
+) {
+    if (!status.referral_whitelist().contains(&referrer)) {
+        status.referral_whitelist.insert(referrer);
+    };
+}
+
+public fun remove_referrer<P>(
+    status: &mut Status<P>,
+    _cap: &AdminCap<P>,
+    referrer: address,
+) {
+    if (status.referral_whitelist().contains(&referrer)) {
+        status.referral_whitelist.remove(&referrer);
+    };
+}
+
+public fun add_voucher_type<P, V>(
+    status: &mut Status<P>,
+    _cap: &AdminCap<P>,
+) {
+    let voucher_name = get<V>();
+    if (!status.voucher_whitelist().contains(&voucher_name)) {
+        status.voucher_whitelist.insert(voucher_name);
+    };
+}
+
+public fun remove_voucher_type<P, V>(
+    status: &mut Status<P>,
+    _cap: &AdminCap<P>,
+) {
+    let voucher_name = get<V>();
+    if (status.voucher_whitelist().contains(&voucher_name)) {
+        status.voucher_whitelist.remove(&voucher_name);
+    };
 }
 
 //***********************
@@ -392,16 +433,31 @@ public fun leaderboard<P>(status: &Status<P>): &Leaderboard {
     &status.leaderboard
 }
 
+public fun referral_whitelist<P>(status: &Status<P>): &VecSet<address> {
+    &status.referral_whitelist
+}
+
+public fun voucher_whitelist<P>(status: &Status<P>): &VecSet<TypeName> {
+    &status.voucher_whitelist
+}
+
 public fun is_valid_referrer<P>(
     status: &Status<P>,
     config: &Config<P>,
     referrer: address,
 ): bool {
-    status.referral_whitelist.contains(&referrer) || 
+    status.referral_whitelist().contains(&referrer) || 
     {
         status.user_profiles().contains(referrer) &&
         status.user_profiles().borrow(referrer).shares() >= config.referral_threshold()
     }
+}
+
+public fun is_valid_voucher<P, V>(
+    status: &Status<P>,
+): bool {
+    let voucher_name = get<V>();
+    status.voucher_whitelist().contains(&voucher_name)
 }
 
 public fun pending_holders_reward<P>(

@@ -22,8 +22,11 @@ use buckyou_core::pool::{Pool};
 const EBuyNothing: u64 = 0;
 fun err_buy_nothing() { abort EBuyNothing }
 
-const EPaymentNotEnough: u64 = 0;
+const EPaymentNotEnough: u64 = 1;
 fun err_payment_not_enough() { abort EPaymentNotEnough }
+
+const EInvalidVoucher: u64 = 2;
+fun err_invalid_voucher() { abort EInvalidVoucher }
 
 //***********************
 //  Events
@@ -104,6 +107,9 @@ public fun redeem<P, V: key + store>(
     // check time
     status.assert_game_is_started(clock);
     status.assert_game_is_not_ended(clock);
+    if (!status.is_valid_voucher<P, V>()) {
+        err_invalid_voucher();
+    };
     
     // handle final pool
     let account = req.destroy();
