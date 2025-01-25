@@ -14,9 +14,8 @@ use buckyou_core::voucher::{Self, Voucher};
 fun test_buy() {
     let mut scenario = tu::setup<TEST_PROJECT>();
     let s = &mut scenario;
-    let referral_factor = float::from_percent(90);
     tu::add_pool<TEST_PROJECT, BUCK>(
-        s, 4_000_000_000, tu::days(1), 4_000_000_000, referral_factor, float::from(1)
+        s, 4_000_000_000, tu::days(1), 4_000_000_000, float::from(1)
     );
 
     tu::time_pass(s, tu::days(1) + tu::minutes(20));
