@@ -21,6 +21,7 @@ public fun holders_ratio(): Float { float::from_percent(45) }
 public fun referrer_ratio(): Float { float::from_percent(10) }
 public fun winner_distribution(): vector<Float> { vector[10, 20, 30, 40].map!(|percent| float::from_percent(percent) ) }
 public fun referral_threshold(): u64 { 10 }
+public fun referral_factor(): Float { float::from_percent(90) }
 public fun minutes(m: u64): u64 { m * 60_000 }
 public fun days(d: u64): u64 { d * 86400_000 }
 public fun initial_countdown(): u64 { days(1) } // one day
@@ -33,7 +34,6 @@ public fun current_time(): u64 { start_time() - days(1) }
 public fun initial_price(): u64 { 1_000_000_000 }
 public fun price_period(): u64 { 86400_000 }
 public fun price_increment(): u64 { 1_000_000_000 }
-public fun referral_factor(): Float { float::from_percent(90) }
 public fun price_factor(): Float { float::from(1) }
 
 //***********************
@@ -53,6 +53,7 @@ public fun setup<P: drop>(): Scenario {
         referrer_ratio(),
         winner_distribution(),
         referral_threshold(),
+        referral_factor(),
         initial_countdown(),
         time_increment(),
         end_time_hard_cap(),
@@ -68,7 +69,7 @@ public fun setup<P: drop>(): Scenario {
 
     let mut pool = pool::new<P, SUI>(&cap, &mut status, s.ctx());
     let sui_price_rule = step_price::new<P, SUI>(
-        &cap, initial_price(), price_period(), price_increment(), referral_factor(), price_factor(), s.ctx()
+        &cap, initial_price(), price_period(), price_increment(), price_factor(), s.ctx()
     );
     pool.add_rule<P, SUI, STEP_PRICE_RULE>(&cap);
 
@@ -91,7 +92,6 @@ public fun add_pool<P, T>(
     initial_price: u64,
     price_period: u64,
     price_increment: u64,
-    referral_factor: Float,
     price_factor: Float,
 ) {
     s.next_tx(admin());
@@ -101,7 +101,7 @@ public fun add_pool<P, T>(
 
     let mut pool = pool::new<P, T>(&cap, &mut status, s.ctx());
     let price_rule = step_price::new<P, T>(
-        &cap, initial_price, price_period, price_increment, referral_factor, price_factor, s.ctx()
+        &cap, initial_price, price_period, price_increment, price_factor, s.ctx()
     );
     transfer::public_share_object(price_rule);
     pool.add_rule<P, T, STEP_PRICE_RULE>(&cap);
@@ -135,8 +135,7 @@ public fun buy<P, T>(
     let rule = s.take_shared<Rule<P, T>>();
     let clock = s.take_shared<Clock>();
 
-    let req = account::request(s.ctx());
-    rule.update_price_with_referrer(&status, &mut pool, &clock, req, referrer);
+    rule.update_price(&status, &mut pool, &clock);
     let req = account::request(s.ctx());
     let payment_amount = payment_amount.destroy_or!(ticket_count * pool.price(&clock));
     let mut coin = coin::mint_for_testing<T>(payment_amount, s.ctx());
@@ -163,8 +162,7 @@ public fun rebuy<P, T>(
     let rule = s.take_shared<Rule<P, T>>();
     let clock = s.take_shared<Clock>();
 
-    let req = account::request(s.ctx());
-    rule.update_price_with_referrer(&status, &mut pool, &clock, req, referrer);
+    rule.update_price(&status, &mut pool, &clock);
     let req = account::request(s.ctx());
     entry::rebuy(&config, &mut status, &mut pool, &clock, req, ticket_count, referrer);
 

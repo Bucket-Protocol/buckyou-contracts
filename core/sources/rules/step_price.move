@@ -6,7 +6,6 @@ module buckyou_core::step_price;
 
 use sui::clock::{Clock};
 use liquidlogic_framework::float::{Self, Float};
-use liquidlogic_framework::account::{AccountRequest};
 use buckyou_core::admin::{AdminCap};
 use buckyou_core::pool::{Pool};
 use buckyou_core::status::{Status};
@@ -26,7 +25,6 @@ public struct Rule<phantom P, phantom T> has key, store {
     initial_price: u64,
     period: u64,
     price_increment: u64,
-    referral_factor: Float,
     factor: Float,
 }
 
@@ -39,7 +37,6 @@ public fun new<P, T>(
     initial_price: u64,
     period: u64,
     price_increment: u64,
-    referral_factor: Float,
     factor: Float,
     ctx: &mut TxContext,
 ): Rule<P, T> {
@@ -48,7 +45,6 @@ public fun new<P, T>(
         initial_price,
         period,
         price_increment,
-        referral_factor,
         factor
     }
 }
@@ -70,7 +66,6 @@ public fun destroy<P, T>(
         initial_price: _,
         period: _,
         price_increment: _,
-        referral_factor: _,
         factor: _,
     } = rule;
     id.delete();
@@ -87,23 +82,6 @@ public fun update_price<P, T>(
     clock: &Clock,
 ) {
     let price = rule.price(status, clock);
-    pool.update_price(clock, STEP_PRICE_RULE {}, price);
-}
-
-public fun update_price_with_referrer<P, T>(
-    rule: &Rule<P, T>,
-    status: &Status<P>,
-    pool: &mut Pool<P, T>,
-    clock: &Clock,
-    req: AccountRequest,
-    referrer: Option<address>,
-) {
-    let mut price = rule.price(status, clock);
-    let account = req.destroy();
-    let curr_referrer = status.try_get_referrer(account);
-    if (curr_referrer.is_some() || referrer.is_some()) {
-        price = rule.referral_factor.mul_u64(price).ceil();
-    };
     pool.update_price(clock, STEP_PRICE_RULE {}, price);
 }
 

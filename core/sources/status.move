@@ -234,17 +234,11 @@ public(package) fun handle_referrer<P, T>(
     status: &mut Status<P>,
     config: &Config<P>,
     account: address,
-    mut referrer: Option<address>,
+    referrer: Option<address>,
     amount_for_referrer: u64,
 ): Option<address> {
-    let current_referrer = status.try_get_referrer(account);
-    if (current_referrer.is_some()) {
-        referrer = current_referrer;
-    };
-    if (referrer.is_some()) {
-        status.update_user_state(*referrer.borrow(), option::none());
-    };
     status.update_user_state(account, referrer);
+    let referrer = status.user_profiles().borrow(account).referrer();
     if (referrer.is_some()) {
         let referrer = referrer.destroy_some();
         if (!status.is_valid_referrer(config, referrer)) {
@@ -253,6 +247,7 @@ public(package) fun handle_referrer<P, T>(
         if (referrer == account) {
             err_self_refer();
         };
+        status.update_user_state(referrer, option::none());
         if (amount_for_referrer > 0) {
             let coin_type = get<T>();
             status
@@ -316,6 +311,9 @@ public(package) fun update_user_state<P>(
         if (referrer.is_some()) {
             let referrer = referrer.destroy_some();
             profile.set_referrer(referrer);
+            if (!status.user_profiles.contains(referrer)) {
+                status.update_user_state(referrer, option::none());
+            };
             status.user_profiles.borrow_mut(referrer).add_score();
             emit(Refer<P> { referrer, refered: account});
         };
@@ -334,18 +332,7 @@ public(package) fun update_user_state<P>(
                 let user_state = profile.states_mut().get_mut(&coin_type);
                 let user_unit = user_state.unit();
                 let pending_reward = pool_unit.sub(user_unit).mul_u64(shares).floor();
-                user_state.settle(pending_reward);
-                emit(Earn<P> {
-                    account,
-                    amount: pending_reward,
-                    coin_type: coin_type.into_string(),
-                    from_holders: true,
-                });
-                user_state.set_unit(pool_unit);
-            } else {
-                let user_state = if (shares > 0) {
-                    let pending_reward = pool_unit.mul_u64(shares).floor();
-                    let mut user_state = user_state::new(pool_unit);
+                if (pending_reward > 0) {
                     user_state.settle(pending_reward);
                     emit(Earn<P> {
                         account,
@@ -353,6 +340,21 @@ public(package) fun update_user_state<P>(
                         coin_type: coin_type.into_string(),
                         from_holders: true,
                     });
+                };
+                user_state.set_unit(pool_unit);
+            } else {
+                let user_state = if (shares > 0) {
+                    let pending_reward = pool_unit.mul_u64(shares).floor();
+                    let mut user_state = user_state::new(pool_unit);
+                    if (pending_reward > 0) {
+                        user_state.settle(pending_reward);
+                        emit(Earn<P> {
+                            account,
+                            amount: pending_reward,
+                            coin_type: coin_type.into_string(),
+                            from_holders: true,
+                        });
+                    };
                     user_state
                 } else {
                     user_state::new(pool_unit)

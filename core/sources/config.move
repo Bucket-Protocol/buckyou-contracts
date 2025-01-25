@@ -38,6 +38,7 @@ public struct Config<phantom P> has key, store {
     winner_distribution: vector<Float>,
     // referral
     referral_threshold: u64,
+    referral_factor: Float,
     // status
     initial_countdown: u64,
     time_increment: u64,
@@ -58,6 +59,7 @@ public fun new<P>(
     winner_distribution: vector<Float>,
     // referral
     referral_threshold: u64,
+    referral_factor: Float,
     // status
     initial_countdown: u64,
     time_increment: u64,
@@ -88,6 +90,7 @@ public fun new<P>(
         referrer_ratio,
         winner_distribution,
         referral_threshold,
+        referral_factor,
         initial_countdown,
         time_increment,
         end_time_hard_cap,
@@ -156,6 +159,10 @@ public fun winner_distribution<P>(config: &Config<P>): &vector<Float> {
 
 public fun referral_threshold<P>(config: &Config<P>): u64 {
     config.referral_threshold
+}
+
+public fun referral_factor<P>(config: &Config<P>): Float {
+    config.referral_factor
 }
 
 public fun initial_countdown<P>(config: &Config<P>): u64 {

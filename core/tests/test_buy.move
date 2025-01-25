@@ -51,9 +51,9 @@ fun test_buy() {
 
     s.next_tx(user_3);
     let status = s.take_shared<Status<TEST_PROJECT>>();
-    // std::debug::print(&status.get_account_info(user_1));
-    // std::debug::print(&status.get_account_info(user_2));
-    // std::debug::print(&status.get_account_info(user_3));
+    std::debug::print(&status.get_account_info(user_1));
+    std::debug::print(&status.get_account_info(user_2));
+    std::debug::print(&status.get_account_info(user_3));
     ts::return_shared(status);
 
     tu::rebuy<TEST_PROJECT, BUCK>(s, user_2, 1, option::some(user_3));
@@ -84,10 +84,10 @@ fun test_buy() {
 
     s.next_tx(user_4);
     let status = s.take_shared<Status<TEST_PROJECT>>();
-    std::debug::print(&status.get_account_info(user_1));
-    std::debug::print(&status.get_account_info(user_2));
-    std::debug::print(&status.get_account_info(user_3));
-    std::debug::print(&status.get_account_info(user_4));
+    // std::debug::print(&status.get_account_info(user_1));
+    // std::debug::print(&status.get_account_info(user_2));
+    // std::debug::print(&status.get_account_info(user_3));
+    // std::debug::print(&status.get_account_info(user_4));
     // std::debug::print(status.leaderboard());
     // std::debug::print(status.winners());
     // std::debug::print(&status);
@@ -110,9 +110,9 @@ fun test_buy() {
     // std::debug::print(&status.get_account_info(user_1));
     // std::debug::print(&status.get_account_info(user_2));
     // std::debug::print(&status.get_account_info(user_3));
-    // std::debug::print(&status.get_account_info(user_4));
-    // std::debug::print(&status.get_account_info(user_5));
-    // std::debug::print(&status.get_account_info(kol));
+    std::debug::print(&status.get_account_info(user_4));
+    std::debug::print(&status.get_account_info(user_5));
+    std::debug::print(&status.get_account_info(kol));
     // std::debug::print(status.leaderboard());
     // std::debug::print(status.winners());
     // std::debug::print(&status);
