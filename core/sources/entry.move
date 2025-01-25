@@ -41,12 +41,6 @@ public struct Buy<phantom P> has copy, drop {
     is_rebuy: bool,
 }
 
-public struct Redeem<phantom P> has copy, drop {
-    account: address,
-    asset_type: String,
-    asset_id: ID,
-}
-
 //***********************
 //  Public Funs
 //***********************
@@ -115,10 +109,13 @@ public fun redeem<P, V: key + store>(
     let account = req.destroy();
     status.handle_final(config, clock, account, 1);
     status.handle_redeem<P, V>(account);
-    emit(Redeem<P> {
+    emit(Buy<P> {
         account,
-        asset_type: get<V>().into_string(),
-        asset_id: object::id(&voucher),
+        referrer: option::none(),
+        coin_type: get<V>().into_string(),
+        count: 1,
+        payment: 0,
+        is_rebuy: false,
     });
     transfer::public_transfer(voucher, object::id(status).to_address());
 }
