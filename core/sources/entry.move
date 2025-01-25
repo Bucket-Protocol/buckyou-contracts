@@ -38,6 +38,12 @@ public struct Buy<phantom P> has copy, drop {
     is_rebuy: bool,
 }
 
+public struct Redeem<phantom P> has copy, drop {
+    account: address,
+    asset_type: String,
+    asset_id: ID,
+}
+
 //***********************
 //  Public Funs
 //***********************
@@ -83,6 +89,32 @@ public fun rebuy<P, T>(
     let account = req.destroy();
     let payment = pool.claim(config, status, account, payment_amount);
     buy_internal(config, status, pool, clock, account, ticket_count, payment, referrer, true);
+}
+
+public fun redeem<P, V: key + store>(
+    config: &Config<P>,
+    status: &mut Status<P>,
+    clock: &Clock,
+    req: AccountRequest,
+    voucher: V,
+) {
+    // check version
+    config.assert_valid_package_version();
+    
+    // check time
+    status.assert_game_is_started(clock);
+    status.assert_game_is_not_ended(clock);
+    
+    // handle final pool
+    let account = req.destroy();
+    status.handle_final(config, clock, account, 1);
+    status.handle_redeem<P, V>(account);
+    emit(Redeem<P> {
+        account,
+        asset_type: get<V>().into_string(),
+        asset_id: object::id(&voucher),
+    });
+    transfer::public_transfer(voucher, object::id(status).to_address());
 }
 
 //***********************

@@ -11,6 +11,7 @@ use sui::event::{emit};
 use sui::vec_map::{Self, VecMap};
 use sui::table::{Self, Table};
 use sui::vec_set::{Self, VecSet};
+use sui::transfer::{Receiving};
 use liquidlogic_framework::double;
 use buckyou_core::config::{Config};
 use buckyou_core::admin::{AdminCap};
@@ -132,6 +133,15 @@ public fun start<P>(
     emit(NewEndTime<P> { ms: status.end_time() });
 }
 
+public fun receive<P, V: key + store>(
+    status: &mut Status<P>,
+    clock: &Clock,
+    receiving: Receiving<V>,
+): V {
+    status.assert_game_is_ended(clock);
+    transfer::public_receive(&mut status.id, receiving)
+}
+
 //***********************
 //  Package Funs
 //***********************
@@ -224,14 +234,94 @@ public(package) fun handle_holders<P, T>(
 ) {
     let coin_type = get<T>();
     status.total_shares = status.total_shares() + ticket_count;
-    status.user_profiles.borrow_mut(account).add_shares(ticket_count);
+    let shares = status.user_profiles.borrow_mut(account).add_shares(ticket_count);
     let increment = double::from_fraction(reward_for_holders, status.total_shares());
     status.pool_states.get_mut(&coin_type).add_unit(increment);
+    status.leaderboard.insert(account, shares);
     emit(AddShares<P> {
         coin_type: coin_type.into_string(),
         shares: ticket_count,
         total_shares: status.total_shares(),
     });
+}
+
+public(package) fun handle_redeem<P, V>(
+    status: &mut Status<P>,
+    account: address,
+) {
+    status.update_user_state(account, option::none());
+    status.total_shares = status.total_shares() + 1;
+    let shares = status.user_profiles.borrow_mut(account).add_shares(1);
+    status.leaderboard.insert(account, shares);
+    emit(AddShares<P> {
+        coin_type: get<V>().into_string(),
+        shares: 1,
+        total_shares: status.total_shares(),
+    });
+}
+
+public(package) fun update_user_state<P>(
+    status: &mut Status<P>,
+    account: address,
+    referrer: Option<address>,
+) {
+    if (!status.user_profiles().contains(account)) {
+        let mut profile = profile::new(referrer);
+        if (referrer.is_some()) {
+            let referrer = referrer.destroy_some();
+            profile.set_referrer(referrer);
+            status.user_profiles.borrow_mut(referrer).add_score();
+            emit(Refer<P> { referrer, refered: account});
+        };
+        status.pool_states().keys().do!(|coin_type| {
+            let pool_unit = status.pool_states().get(&coin_type).unit();
+            profile.states_mut().insert(coin_type, user_state::new(pool_unit));
+        });
+        status.user_profiles.add(account, profile);
+    } else {
+        let all_coin_types = status.pool_states().keys();
+        all_coin_types.do!(|coin_type| {
+            let pool_unit = status.pool_states.get(&coin_type).unit();
+            let profile = status.user_profiles.borrow_mut(account);
+            let shares = profile.shares();
+            if (profile.states().contains(&coin_type)) {
+                let user_state = profile.states_mut().get_mut(&coin_type);
+                let user_unit = user_state.unit();
+                let pending_reward = pool_unit.sub(user_unit).mul_u64(shares).floor();
+                user_state.settle(pending_reward);
+                emit(Earn<P> {
+                    account,
+                    amount: pending_reward,
+                    coin_type: coin_type.into_string(),
+                    from_holders: true,
+                });
+                user_state.set_unit(pool_unit);
+            } else {
+                let user_state = if (shares > 0) {
+                    let pending_reward = pool_unit.mul_u64(shares).floor();
+                    let mut user_state = user_state::new(pool_unit);
+                    user_state.settle(pending_reward);
+                    emit(Earn<P> {
+                        account,
+                        amount: pending_reward,
+                        coin_type: coin_type.into_string(),
+                        from_holders: true,
+                    });
+                    user_state
+                } else {
+                    user_state::new(pool_unit)
+                };
+                profile.states_mut().insert(coin_type, user_state);
+            };
+        });
+        let profile = status.user_profiles.borrow_mut(account);
+        if (referrer.is_some() && profile.referrer().is_none()) {
+            let referrer = referrer.destroy_some();
+            profile.set_referrer(referrer);
+            status.user_profiles.borrow_mut(referrer).add_score();
+            emit(Refer<P> { referrer, refered: account});
+        };
+    };
 }
 
 public(package) fun user_profiles_mut<P>(status: &mut Status<P>): &mut Table<address, Profile> {
@@ -362,74 +452,6 @@ public fun realtime_referral_reward<P>(
         status.user_profiles().borrow(account).states().get(coin_type).referral_reward()
     } else {
         0
-    }
-}
-
-//***********************
-//  Internal Funs
-//***********************
-
-public(package) fun update_user_state<P>(
-    status: &mut Status<P>,
-    account: address,
-    referrer: Option<address>,
-) {
-    if (!status.user_profiles().contains(account)) {
-        let mut profile = profile::new(referrer);
-        if (referrer.is_some()) {
-            let referrer = referrer.destroy_some();
-            profile.set_referrer(referrer);
-            status.user_profiles.borrow_mut(referrer).add_score();
-            emit(Refer<P> { referrer, refered: account});
-        };
-        status.pool_states().keys().do!(|coin_type| {
-            let pool_unit = status.pool_states().get(&coin_type).unit();
-            profile.states_mut().insert(coin_type, user_state::new(pool_unit));
-        });
-        status.user_profiles.add(account, profile);
-    } else {
-        let all_coin_types = status.pool_states().keys();
-        all_coin_types.do!(|coin_type| {
-            let pool_unit = status.pool_states.get(&coin_type).unit();
-            let profile = status.user_profiles.borrow_mut(account);
-            let shares = profile.shares();
-            if (profile.states().contains(&coin_type)) {
-                let user_state = profile.states_mut().get_mut(&coin_type);
-                let user_unit = user_state.unit();
-                let pending_reward = pool_unit.sub(user_unit).mul_u64(shares).floor();
-                user_state.settle(pending_reward);
-                emit(Earn<P> {
-                    account,
-                    amount: pending_reward,
-                    coin_type: coin_type.into_string(),
-                    from_holders: true,
-                });
-                user_state.set_unit(pool_unit);
-            } else {
-                let user_state = if (shares > 0) {
-                    let pending_reward = pool_unit.mul_u64(shares).floor();
-                    let mut user_state = user_state::new(pool_unit);
-                    user_state.settle(pending_reward);
-                    emit(Earn<P> {
-                        account,
-                        amount: pending_reward,
-                        coin_type: coin_type.into_string(),
-                        from_holders: true,
-                    });
-                    user_state
-                } else {
-                    user_state::new(pool_unit)
-                };
-                profile.states_mut().insert(coin_type, user_state);
-            };
-        });
-        let profile = status.user_profiles.borrow_mut(account);
-        if (referrer.is_some() && profile.referrer().is_none()) {
-            let referrer = referrer.destroy_some();
-            profile.set_referrer(referrer);
-            status.user_profiles.borrow_mut(referrer).add_score();
-            emit(Refer<P> { referrer, refered: account});
-        };
     }
 }
 

@@ -59,6 +59,7 @@ fun test_buy() {
     std::debug::print(&status.get_account_info(user_1));
     std::debug::print(&status.get_account_info(user_2));
     std::debug::print(&status.get_account_info(user_3));
+    std::debug::print(status.leaderboard());
     ts::return_shared(status);
 
     scenario.end();
