@@ -92,7 +92,7 @@ public struct Starter<phantom P> has key, store {
 }
 
 //***********************
-//  Public Funs
+//  Admin Funs
 //***********************   
 
 public fun new<P>(

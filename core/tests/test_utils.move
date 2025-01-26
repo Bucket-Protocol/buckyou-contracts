@@ -219,3 +219,18 @@ public fun add_voucher_type<P, V>(s: &mut Scenario) {
     ts::return_shared(status);
     s.return_to_sender(cap);
 }
+
+public fun settle_winners<P, T>(s: &mut Scenario) {
+    s.next_tx(admin());
+    let mut pool = s.take_shared<Pool<P, T>>();
+    let config = s.take_shared<Config<P>>();
+    let mut status = s.take_shared<Status<P>>();
+    let clock = s.take_shared<Clock>();
+
+    pool.settle_winners(&config, &mut status, &clock, s.ctx());
+
+    ts::return_shared(pool);
+    ts::return_shared(config);
+    ts::return_shared(status);
+    ts::return_shared(clock);
+}

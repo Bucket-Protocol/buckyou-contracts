@@ -1,17 +1,19 @@
 #[test_only]
-module buckyou_core::test_buy;
+module buckyou_core::test_flow;
 
 use sui::sui::SUI;
+use sui::coin::Coin;
 use sui::test_scenario::{Self as ts};
 use liquidlogic_framework::float;
 use buckyou_core::status::{Status};
+use buckyou_core::pool::{Pool};
 use buckyou_core::test_utils::{Self as tu};
 use buckyou_core::test_project::{TEST_PROJECT};
 use buckyou_core::buck::{BUCK};
 use buckyou_core::voucher::{Self, Voucher};
 
 #[test]
-fun test_buy() {
+fun test_flow() {
     let mut scenario = tu::setup<TEST_PROJECT>();
     let s = &mut scenario;
     tu::add_pool<TEST_PROJECT, BUCK>(
@@ -50,9 +52,9 @@ fun test_buy() {
 
     s.next_tx(user_3);
     let status = s.take_shared<Status<TEST_PROJECT>>();
-    std::debug::print(&status.get_account_info(user_1));
-    std::debug::print(&status.get_account_info(user_2));
-    std::debug::print(&status.get_account_info(user_3));
+    // std::debug::print(&status.get_account_info(user_1));
+    // std::debug::print(&status.get_account_info(user_2));
+    // std::debug::print(&status.get_account_info(user_3));
     ts::return_shared(status);
 
     tu::rebuy<TEST_PROJECT, BUCK>(s, user_2, 1, option::some(user_3));
@@ -79,7 +81,7 @@ fun test_buy() {
 
     tu::time_pass(s, tu::minutes(10));
 
-    tu::redeem<TEST_PROJECT, Voucher>(s, user_4, voucher_count);
+    tu::redeem<TEST_PROJECT, Voucher>(s, user_4, voucher_count - 1);
 
     s.next_tx(user_4);
     let status = s.take_shared<Status<TEST_PROJECT>>();
@@ -109,13 +111,85 @@ fun test_buy() {
     // std::debug::print(&status.get_account_info(user_1));
     // std::debug::print(&status.get_account_info(user_2));
     // std::debug::print(&status.get_account_info(user_3));
+    // std::debug::print(&status.get_account_info(user_4));
+    // std::debug::print(&status.get_account_info(user_5));
+    // std::debug::print(&status.get_account_info(kol));
+    // std::debug::print(status.leaderboard());
+    // std::debug::print(status.winners());
+    // std::debug::print(&status);
+    ts::return_shared(status);
+
+    tu::time_pass(s, tu::minutes(1));
+    tu::buy<TEST_PROJECT, SUI>(s, user_1, 1, option::none(), option::none());
+    tu::time_pass(s, tu::minutes(1));
+    tu::buy<TEST_PROJECT, BUCK>(s, user_2, 1, option::none(), option::none());
+    tu::time_pass(s, tu::minutes(1));
+    tu::buy<TEST_PROJECT, SUI>(s, user_3, 1, option::none(), option::none());
+    tu::time_pass(s, tu::minutes(1));
+    tu::redeem<TEST_PROJECT, Voucher>(s, user_4, 1);
+
+    tu::time_pass(s, tu::days(2));
+
+    s.next_tx(tu::admin());
+    let status = s.take_shared<Status<TEST_PROJECT>>();
+    let sui_pool = s.take_shared<Pool<TEST_PROJECT, SUI>>();
+    let buck_pool = s.take_shared<Pool<TEST_PROJECT, BUCK>>();
+    std::debug::print(&status.get_account_info(user_1));
+    std::debug::print(&status.get_account_info(user_2));
+    std::debug::print(&status.get_account_info(user_3));
     std::debug::print(&status.get_account_info(user_4));
     std::debug::print(&status.get_account_info(user_5));
     std::debug::print(&status.get_account_info(kol));
     // std::debug::print(status.leaderboard());
     // std::debug::print(status.winners());
     // std::debug::print(&status);
+    std::debug::print(status.winners());
+    std::debug::print(&sui_pool);
+    std::debug::print(&buck_pool);
     ts::return_shared(status);
+    ts::return_shared(sui_pool);
+    ts::return_shared(buck_pool);
+
+    tu::settle_winners<TEST_PROJECT, SUI>(s);
+    s.next_tx(tu::admin());
+    {
+        let status = s.take_shared<Status<TEST_PROJECT>>();
+        status.winners().do_ref!(|winner| {
+            let reward = s.take_from_address<Coin<SUI>>(*winner);
+            std::debug::print(&reward.value());
+            ts::return_to_address(*winner, reward);
+        });
+        ts::return_shared(status);
+    };
+
+    tu::settle_winners<TEST_PROJECT, BUCK>(s);
+    s.next_tx(tu::admin());
+    {
+        let status = s.take_shared<Status<TEST_PROJECT>>();
+        status.winners().do_ref!(|winner| {
+            let reward = s.take_from_address<Coin<BUCK>>(*winner);
+            std::debug::print(&reward.value());
+            ts::return_to_address(*winner, reward);
+        });
+        ts::return_shared(status);
+    };
+
+    s.next_tx(tu::admin());
+    let sui_pool = s.take_shared<Pool<TEST_PROJECT, SUI>>();
+    let buck_pool = s.take_shared<Pool<TEST_PROJECT, BUCK>>();
+    // std::debug::print(status.leaderboard());
+    // std::debug::print(status.winners());
+    // std::debug::print(&status);
+    std::debug::print(&sui_pool);
+    std::debug::print(&buck_pool);
+    ts::return_shared(sui_pool);
+    ts::return_shared(buck_pool);
+
+    // tu::settle_winners<TEST_PROJECT, SUI>(s);
+    // tu::settle_winners<TEST_PROJECT, BUCK>(s);
+
+    // tu::time_pass(s, tu::minutes(1));
+    // tu::buy<TEST_PROJECT, SUI>(s, user_5, 20, option::none(), option::none());
 
     scenario.end();
 }

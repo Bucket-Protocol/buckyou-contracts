@@ -28,6 +28,9 @@ fun err_price_feed_outdated() { abort EPriceFeedOutdated }
 const EAccountNotFound: u64 = 2;
 fun err_account_not_found() { abort EAccountNotFound }
 
+const EFinalPoolNotEnoughToSettle: u64 = 3;
+fun err_final_pool_not_enough_to_settle() { abort EFinalPoolNotEnoughToSettle }
+
 //***********************
 //  Events
 //***********************
@@ -170,6 +173,9 @@ public fun settle_winners<P, T>(
     let mut prizes = vector[];
     status.winners().zip_do_ref!(config.winner_distribution(), |winner, ratio| {
         let prize_amount = (*ratio).mul_u64(final_pool_size).floor();
+        if (prize_amount == 0) {
+            err_final_pool_not_enough_to_settle();
+        };
         prizes.push_back(prize_amount);
         let prize = pool.final_balance.split(prize_amount).into_coin(ctx);
         transfer::public_transfer(prize, *winner);
@@ -252,6 +258,14 @@ public fun price<P, T>(
         err_price_feed_outdated();
     };
     pool.price
+}
+
+public fun final_balance<P, T>(pool: &Pool<P, T>): &Balance<T> {
+    &pool.final_balance
+}
+
+public fun holders_balance<P, T>(pool: &Pool<P, T>): &Balance<T> {
+    &pool.holders_balance
 }
 
 //***********************
