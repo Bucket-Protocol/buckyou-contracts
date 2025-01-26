@@ -84,9 +84,12 @@ public fun rebuy<P, T>(
     if (ticket_count == 0) {
         err_buy_nothing();
     };
-    let payment_amount = ticket_count * pool.price(clock);
-
     let account = req.destroy();
+    let mut payment_amount = ticket_count * pool.price(clock);
+    if (status.try_get_referrer(account).is_some() || referrer.is_some()) {
+        payment_amount = config.referral_factor().mul_u64(payment_amount).ceil();
+    };
+
     let payment = pool.claim(config, status, account, payment_amount);
     buy_internal(config, status, pool, clock, account, ticket_count, payment, referrer, true);
 }
