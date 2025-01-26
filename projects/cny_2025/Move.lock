@@ -2,10 +2,43 @@
 
 [move]
 version = 3
-manifest_digest = "26FE43B056B949F6452E0B0B8B1738A08F0FB6A0F00BE78328076F859F4A9E99"
-deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
+manifest_digest = "3552577438B9B8D36FF02553FC2A496CB77EE48DB6A737D7942EA14EB5FBB11E"
+deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
+  { id = "BucketProtocol", name = "BucketProtocol" },
   { id = "BuckyouCore", name = "BuckyouCore" },
+  { id = "Sui", name = "Sui" },
+  { id = "but", name = "but" },
+  { id = "red_envelope_2025", name = "red_envelope_2025" },
+]
+
+[[move.package]]
+id = "BucketFramework"
+source = { git = "https://github.com/Bucket-Protocol/bucket-interface.git", rev = "main", subdir = "framework" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "BucketOracle"
+source = { git = "https://github.com/Bucket-Protocol/oracle.git", rev = "mainnet", subdir = "" }
+
+dependencies = [
+  { id = "Pyth", name = "Pyth" },
+  { id = "Sui", name = "Sui" },
+  { id = "SupraOracle", name = "SupraOracle" },
+  { id = "SwitchboardStdLib", name = "SwitchboardStdLib" },
+]
+
+[[move.package]]
+id = "BucketProtocol"
+source = { git = "https://github.com/Bucket-Protocol/bucket-interface.git", rev = "main", subdir = "bucket-protocol" }
+
+dependencies = [
+  { id = "BucketFramework", name = "BucketFramework" },
+  { id = "BucketOracle", name = "BucketOracle" },
+  { id = "Flask", name = "Flask" },
   { id = "Sui", name = "Sui" },
 ]
 
@@ -19,8 +52,16 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "Flask"
+source = { git = "https://github.com/Sparkling-Finance/contract.git", rev = "main", subdir = "flask" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
 id = "LiquidlogicFramework"
-source = { git = "https://github.com/LiquidLogic-Tech/liquidlogic-framework.git", rev = "testnet", subdir = "" }
+source = { git = "https://github.com/LiquidLogic-Tech/liquidlogic-framework.git", rev = "main", subdir = "" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -31,6 +72,15 @@ id = "MoveStdlib"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
+id = "Pyth"
+source = { git = "https://github.com/Bucket-Protocol/oracle.git", rev = "mainnet", subdir = "partners/pyth" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "Wormhole", name = "Wormhole" },
+]
+
+[[move.package]]
 id = "Sui"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "framework/mainnet", subdir = "crates/sui-framework/packages/sui-framework" }
 
@@ -38,15 +88,62 @@ dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
 ]
 
-[move.toolchain-version]
-compiler-version = "1.39.4"
-edition = "2024.beta"
-flavor = "sui"
-
 [env]
+
+[[move.package]]
+id = "SupraOracle"
+source = { git = "https://github.com/Bucket-Protocol/oracle.git", rev = "mainnet", subdir = "partners/supra" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "SwitchboardStdLib"
+source = { git = "https://github.com/Bucket-Protocol/oracle.git", rev = "mainnet", subdir = "partners/switchboard" }
+
+dependencies = [
+  { id = "MoveStdlib", name = "MoveStdlib" },
+  { id = "Sui", name = "Sui" },
+]
 
 [env.testnet]
 chain-id = "4c78adac"
 original-published-id = "0x51737435eee7c62a30f2424a4c3e16f870bb636dedfed53dbfaa4de189fb7281"
 latest-published-id = "0x51737435eee7c62a30f2424a4c3e16f870bb636dedfed53dbfaa4de189fb7281"
 published-version = "1"
+
+[env.mainnet]
+chain-id = "35834a8a"
+original-published-id = "0xde4d9fdd4d7a7bc84dae6e0743efa7764511dcd730606dacc73fc71cd75908b4"
+latest-published-id = "0xde4d9fdd4d7a7bc84dae6e0743efa7764511dcd730606dacc73fc71cd75908b4"
+published-version = "1"
+
+[[move.package]]
+id = "Wormhole"
+source = { git = "https://github.com/Bucket-Protocol/oracle.git", rev = "mainnet", subdir = "partners/pyth/wormhole" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "but"
+source = { local = "../../../de-token/but" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "red_envelope_2025"
+source = { local = "../red_envelope_2025" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[move.toolchain-version]
+compiler-version = "1.39.4"
+edition = "2024.beta"
+flavor = "sui"
