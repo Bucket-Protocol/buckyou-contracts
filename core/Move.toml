@@ -3,7 +3,7 @@ name = "BuckyouCore"
 edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
-published-at = "0xf35a1d598fb280b184fadb1d8f978b266d00de160d9831be2cad7defb582885f"
+# published-at = "0xf35a1d598fb280b184fadb1d8f978b266d00de160d9831be2cad7defb582885f"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
@@ -21,8 +21,8 @@ LiquidlogicFramework = { git = "https://github.com/LiquidLogic-Tech/liquidlogic-
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-# buckyou_core = "0x0"
-buckyou_core = "0xf35a1d598fb280b184fadb1d8f978b266d00de160d9831be2cad7defb582885f"
+buckyou_core = "0x0"
+# buckyou_core = "0xf35a1d598fb280b184fadb1d8f978b266d00de160d9831be2cad7defb582885f"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.
