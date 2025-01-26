@@ -566,15 +566,3 @@ public fun get_account_info<P>(
         option::none()
     }
 }
-
-//***********************
-//  Testnet-only Funs
-//***********************
-
-public fun extend_end_time<P>(
-    status: &mut Status<P>,
-    _cap: &AdminCap<P>,
-    end_time: u64,
-) {
-    status.end_time = end_time;
-}
